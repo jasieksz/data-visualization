@@ -38,7 +38,7 @@ def make_roll(rn, rr, sn, sr, sam=1): # no. spirals, donugth R, no. points in sp
 
 #%% Generate roll variants
 spiral_points = [100]#, 150, 450]
-interspaces = [2]# [0.5, 1, 2]
+interspaces = [1]
 n_spirals = 15
 dounugth_r = 25
 spiral_r = 10
@@ -63,7 +63,12 @@ components = 2
 neighbors = 8
 
 models = {
-    # ('tsne', 0) : manifold.TSNE(components, init='pca', random_state=0),
+    # ('tsne', 10) : manifold.TSNE(components, init='pca', random_state=0, n_iter=1000, perplexity=10, learning_rate=100),
+    # ('tsne', 50) : manifold.TSNE(components, init='pca', random_state=0, n_iter=1000, perplexity=50, learning_rate=100),
+    # ('tsne', 100) : manifold.TSNE(components, init='pca', random_state=0, n_iter=1000, perplexity=100, learning_rate=100),
+    # ('tsne-i', 5) : manifold.TSNE(components, init='pca', random_state=0, n_iter=500, perplexity=50, learning_rate=100),
+    # ('tsne-i', 10) : manifold.TSNE(components, init='pca', random_state=0, n_iter=1000, perplexity=50, learning_rate=100),
+    # ('tsne-i', 50) : manifold.TSNE(components, init='pca', random_state=0, n_iter=5000, perplexity=50, learning_rate=100),
     # ('mds', 0) : manifold.MDS(components, max_iter=100, n_init=1, n_jobs=-1),
     # ('lle', neighbors) : manifold.LocallyLinearEmbedding(neighbors, components, n_jobs=-1),
     # ('lle', neighbors*2) : manifold.LocallyLinearEmbedding(neighbors*2, components, n_jobs=-1),
@@ -81,18 +86,20 @@ def get_mapping(rolls):
             t1 = time()
             yield (name[0] + ' ' + str(name[1]) + ' ' + str(params)), (Y, color, ' time:' + "{:.2f}".format(t1-t0))
 
-def get_model_mapping(maps):
-    for s in range(0, len(maps), 9):
-        yield maps[s:s+9]
+def get_model_mapping(arr):
+    for s in range(0, len(arr), 9):
+        yield arr[s:s+9]
 
 maps = np.array(list(get_mapping(rolls)))
-np.save('maps.npy', maps)
+np.save('maps_tsne_i.npy', maps)
 
 #%% Load saved mappings
-lle = np.load('lab3-swissroll/maps_lle.npy')
-iso = np.load('lab3-swissroll/maps_iso.npy')
-mds = np.load('lab3-swissroll/maps_mds.npy')
-maps = np.concatenate((lle, iso, mds))
+# lle = np.load('lab3-swissroll/maps_lle.npy')
+# iso = np.load('lab3-swissroll/maps_iso.npy')
+# mds = np.load('lab3-swissroll/maps_mds.npy')
+# tsne = np.load('lab3-swissroll/maps_tsne.npy')
+maps = np.concatenate((lle, iso, tsne, mds))
+
 
 #%% Show mappings
 for mapp in get_model_mapping(maps):
