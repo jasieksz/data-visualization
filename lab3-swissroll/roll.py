@@ -1,53 +1,27 @@
-
 #%%
-get_ipython().run_line_magic('matplotlib', 'notebook')
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn import manifold, datasets
+%matplotlib inline
+# %matplotlib notebook
+
+import math
+from itertools import product
+from math import pi
 from time import time
-from matplotlib.ticker import NullFormatter
 
-
-#%%
-X, color = datasets.samples_generator.make_swiss_roll(n_samples=1500)
-
-print("Computing LLE embedding")
-X_r, err = manifold.locally_linear_embedding(X, n_neighbors=12, n_components=2)
-print("Done. Reconstruction error: %g" % err)
-
-
-#%%
-get_ipython().run_line_magic('matplotlib', 'notebook')
-fig = plt.figure()
-
-ax = fig.add_subplot(211, projection='3d')
-ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=color, cmap=plt.cm.Spectral)
-
-ax.set_title("Original data")
-ax = fig.add_subplot(212)
-ax.scatter(X_r[:, 0], X_r[:, 1], c=color, cmap=plt.cm.Spectral)
-plt.axis('tight')
-plt.xticks([]), plt.yticks([])
-plt.title('Projected data')
-plt.show()
-
-#%%
-get_ipython().run_line_magic('matplotlib', 'notebook')
-from sklearn.datasets.samples_generator import make_swiss_roll
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
-import math
-from math import pi
 import numpy as np
+from matplotlib.ticker import NullFormatter
+from sklearn import datasets, manifold
 
-#%%
-def make_spiral(big_r, alpha, n, start_r):
+#%% Generators
+def make_spiral(n, big_r, alpha, start_r):
     r = start_r
     points = []
-    for x in range(0, n + 1):
+    for x in range(0, n):
         fig_r = math.cos(4 * pi / n * x) * r
-        points.append(np.array([(big_r + fig_r) * math.cos(alpha), (big_r + fig_r) * math.sin(alpha), math.sin(4 * pi / n * x) * r, x]))
-        r = start_r * (n + 1 - x) / n
+        a = np.array([(big_r + fig_r) * math.cos(alpha), (big_r + fig_r) * math.sin(alpha), math.sin(4 * pi / n * x) * r, x])
+        points.append(a)
+        r = start_r * (n - x) / n
 
     points = np.array(points)
     noise_matrix = np.random.normal(0, .1, points.shape)
@@ -55,121 +29,73 @@ def make_spiral(big_r, alpha, n, start_r):
     result = np.add(points, noise_matrix)
     return result
 
-def make_roll(n_roll, r_roll, n, r):
-    alphas = [pi/2 * x / n_roll for x in range(0, n_roll + 1)]
-    roll = make_spiral(r_roll, alphas[0], n, r)
+def make_roll(rn, rr, sn, sr, sam=1): # no. spirals, donugth R, no. points in spiral, spiral R, dist between spirals
+    alphas = [sam * pi/2 * x / rn for x in range(0, rn + 1)]
+    roll = make_spiral(sn, rr, alphas[0], sr)
     for p in alphas[1:]:
-        roll = np.concatenate((roll, make_spiral(r_roll, p, n, r)))
-    return roll
+        roll = np.concatenate((roll, make_spiral(sn, rr, p, sr)))
+    return (roll[:,:3], roll[:,3])
 
-#%%
-def color_roll():
-    n_roll = 30
-    r_roll = 15
-    spiral_points = 100
-    spiral_r = 5
-    
-    X = make_roll(n_roll, r_roll, spiral_points, spiral_r)
-    return (X[:,:3], X[:,3])
+#%% Generate roll variants
+spiral_points = [50, 150, 450]
+interspaces = [0.5, 1, 2]
+n_spirals = 20
+dounugth_r = 25
+spiral_r = 10
 
+rolls = {
+    (sp, insp): make_roll(n_spirals, dounugth_r, sp, spiral_r, insp)
+    for (sp, insp) in product(spiral_points, interspaces)
+}
 
-#%%
-X, color = color_roll()
-fig = plt.figure()
-ax = p3.Axes3D(fig)
-ax.view_init(20, -60)
-ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=color, s=10, cmap=plt.cm.Spectral)
+#%% Show roll variants
+fig = plt.figure(figsize=(15,15))
+fig.subplots_adjust(hspace=0.05, wspace=0.05)
+for i, (k, v) in enumerate(rolls.items()):
+    X, color = v
+    ax = fig.add_subplot(3, 3, i+1, projection='3d')
+    ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=color, cmap=plt.cm.Spectral)
+    ax.set_title(str(k))
 plt.show()
 
-#%% [markdown]
-# ## LLE
+#%% Generate models
+components = 2
+neighbors = 8
 
-#%%
-kX_r, kerr = manifold.locally_linear_embedding(kX, n_neighbors=12, n_components=2)
+models = {
+    # ('tsne', 0) : manifold.TSNE(components, init='pca', random_state=0),
+    ('mds', 0) : manifold.MDS(components, max_iter=100, n_init=1),
+    ('lle', neighbors) : manifold.LocallyLinearEmbedding(neighbors, components),
+    ('lle', neighbors*2) : manifold.LocallyLinearEmbedding(neighbors*2, components),
+    ('isomap', neighbors) : manifold.Isomap(neighbors, components),
+    ('isomap', neighbors*2) : manifold.Isomap(neighbors*2, components)
+}
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
-ax.scatter(kX_r[:, 0], kX_r[:, 1], c=kColor, cmap=plt.cm.viridis)
-plt.axis('tight')
-plt.xticks([]), plt.yticks([])
-plt.title('Projected data')
-plt.show()
+#%% Generate mappings
+def get_mapping(rolls):
+    for (name, model) in models.items():
+        for (params, roll) in rolls.items():
+            X, color = roll
+            t0 = time()
+            Y = model.fit_transform(X)
+            t1 = time()
+            yield (name[0] + ' ' + str(name[1]) + ' ' + str(params)), (Y, color, ' time:' + "{:.2f}".format(t1-t0))
 
-#%%
-X, color = color_roll()
+def get_model_mapping(maps):
+    for s in range(0, len(maps), 9):
+        yield maps[s:s+9]
 
-fig = plt.figure(figsize=(20, 12))
+maps = np.array(list(get_mapping(rolls)))
 
+#%% Show mappings
+for mapp in get_model_mapping(maps):
+    fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(15,15))
+    fig.subplots_adjust(hspace=0.1, wspace=0.05)
+    for ax, mapp in zip(axes.flatten(), mapp):
+        k, v = mapp
+        Y, color, mtime = v
+        ax.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
+        ax.set_title(str(k) + mtime)
+        ax.xaxis.set_major_formatter(NullFormatter())
+        ax.yaxis.set_major_formatter(NullFormatter())
 
-n_neighbors = 10
-n_components = 2
-
-methods = ['standard', 'ltsa', 'hessian', 'modified']
-labels = ['LLE', 'LTSA', 'Hessian LLE', 'Modified LLE']
-
-for i, method in enumerate(methods):
-    t0 = time()
-    Y = manifold.LocallyLinearEmbedding(n_neighbors, n_components,
-                                        eigen_solver='auto',
-                                        method=method).fit_transform(X)
-    t1 = time()
-    print("%s: %.2g sec" % (methods[i], t1 - t0))
-
-    ax = fig.add_subplot(252 + i)
-    plt.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
-    plt.title("%s (%.2g sec)" % (labels[i], t1 - t0))
-    ax.xaxis.set_major_formatter(NullFormatter())
-    ax.yaxis.set_major_formatter(NullFormatter())
-    plt.axis('tight')
-
-t0 = time()
-Y = manifold.Isomap(n_neighbors, n_components).fit_transform(X)
-t1 = time()
-print("Isomap: %.2g sec" % (t1 - t0))
-ax = fig.add_subplot(257)
-plt.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
-plt.title("Isomap (%.2g sec)" % (t1 - t0))
-ax.xaxis.set_major_formatter(NullFormatter())
-ax.yaxis.set_major_formatter(NullFormatter())
-plt.axis('tight')
-
-
-t0 = time()
-mds = manifold.MDS(n_components, max_iter=100, n_init=1)
-Y = mds.fit_transform(X)
-t1 = time()
-print("MDS: %.2g sec" % (t1 - t0))
-ax = fig.add_subplot(258)
-plt.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
-plt.title("MDS (%.2g sec)" % (t1 - t0))
-ax.xaxis.set_major_formatter(NullFormatter())
-ax.yaxis.set_major_formatter(NullFormatter())
-plt.axis('tight')
-
-
-t0 = time()
-se = manifold.SpectralEmbedding(n_components=n_components,
-                                n_neighbors=n_neighbors)
-Y = se.fit_transform(X)
-t1 = time()
-print("SpectralEmbedding: %.2g sec" % (t1 - t0))
-ax = fig.add_subplot(259)
-plt.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
-plt.title("SpectralEmbedding (%.2g sec)" % (t1 - t0))
-ax.xaxis.set_major_formatter(NullFormatter())
-ax.yaxis.set_major_formatter(NullFormatter())
-plt.axis('tight')
-
-t0 = time()
-tsne = manifold.TSNE(n_components=n_components, init='pca', random_state=0)
-Y = tsne.fit_transform(X)
-t1 = time()
-print("t-SNE: %.2g sec" % (t1 - t0))
-ax = fig.add_subplot(2, 5, 10)
-plt.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
-plt.title("t-SNE (%.2g sec)" % (t1 - t0))
-ax.xaxis.set_major_formatter(NullFormatter())
-ax.yaxis.set_major_formatter(NullFormatter())
-plt.axis('tight')
-
-plt.show()
