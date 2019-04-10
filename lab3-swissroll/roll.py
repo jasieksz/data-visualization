@@ -37,9 +37,9 @@ def make_roll(rn, rr, sn, sr, sam=1): # no. spirals, donugth R, no. points in sp
     return (roll[:,:3], roll[:,3])
 
 #%% Generate roll variants
-spiral_points = [50, 150, 450]
-interspaces = [0.5, 1, 2]
-n_spirals = 20
+spiral_points = [100]#, 150, 450]
+interspaces = [2]# [0.5, 1, 2]
+n_spirals = 15
 dounugth_r = 25
 spiral_r = 10
 
@@ -64,11 +64,11 @@ neighbors = 8
 
 models = {
     # ('tsne', 0) : manifold.TSNE(components, init='pca', random_state=0),
-    ('mds', 0) : manifold.MDS(components, max_iter=100, n_init=1),
-    ('lle', neighbors) : manifold.LocallyLinearEmbedding(neighbors, components),
-    ('lle', neighbors*2) : manifold.LocallyLinearEmbedding(neighbors*2, components),
-    ('isomap', neighbors) : manifold.Isomap(neighbors, components),
-    ('isomap', neighbors*2) : manifold.Isomap(neighbors*2, components)
+    # ('mds', 0) : manifold.MDS(components, max_iter=100, n_init=1, n_jobs=-1),
+    # ('lle', neighbors) : manifold.LocallyLinearEmbedding(neighbors, components, n_jobs=-1),
+    # ('lle', neighbors*2) : manifold.LocallyLinearEmbedding(neighbors*2, components, n_jobs=-1),
+    # ('isomap', neighbors) : manifold.Isomap(neighbors, components, n_jobs=-1),
+    # ('isomap', neighbors*2) : manifold.Isomap(neighbors*2, components, n_jobs=-1)
 }
 
 #%% Generate mappings
@@ -86,10 +86,17 @@ def get_model_mapping(maps):
         yield maps[s:s+9]
 
 maps = np.array(list(get_mapping(rolls)))
+np.save('maps.npy', maps)
+
+#%% Load saved mappings
+lle = np.load('lab3-swissroll/maps_lle.npy')
+iso = np.load('lab3-swissroll/maps_iso.npy')
+mds = np.load('lab3-swissroll/maps_mds.npy')
+maps = np.concatenate((lle, iso, mds))
 
 #%% Show mappings
 for mapp in get_model_mapping(maps):
-    fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(15,15))
+    fig, axes = plt.subplots(nrows=mapp.shape[0]//3, ncols=3, figsize=(15,15))
     fig.subplots_adjust(hspace=0.1, wspace=0.05)
     for ax, mapp in zip(axes.flatten(), mapp):
         k, v = mapp
@@ -98,4 +105,3 @@ for mapp in get_model_mapping(maps):
         ax.set_title(str(k) + mtime)
         ax.xaxis.set_major_formatter(NullFormatter())
         ax.yaxis.set_major_formatter(NullFormatter())
-
