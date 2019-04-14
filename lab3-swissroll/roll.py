@@ -94,16 +94,16 @@ maps = np.array(list(get_mapping(rolls)))
 np.save('maps_tsne_i.npy', maps)
 
 #%% Load saved mappings
-# lle = np.load('lab3-swissroll/maps_lle.npy')
-# iso = np.load('lab3-swissroll/maps_iso.npy')
-# mds = np.load('lab3-swissroll/maps_mds.npy')
-# tsne = np.load('lab3-swissroll/maps_tsne.npy')
+lle = np.load('lab3-swissroll/maps_lle.npy')
+iso = np.load('lab3-swissroll/maps_iso.npy')
+mds = np.load('lab3-swissroll/maps_mds.npy')
+tsne = np.load('lab3-swissroll/maps_tsne.npy')
 maps = np.concatenate((lle, iso, tsne, mds))
 
 
 #%% Show mappings
 for mapp in get_model_mapping(maps):
-    fig, axes = plt.subplots(nrows=mapp.shape[0]//3, ncols=3, figsize=(15,15))
+    fig, axes = plt.subplots(nrows=mapp.shape[0]//3, ncols=3, figsize=(15,mapp.shape[0]//3*5))
     fig.subplots_adjust(hspace=0.1, wspace=0.05)
     for ax, mapp in zip(axes.flatten(), mapp):
         k, v = mapp
