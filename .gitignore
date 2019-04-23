@@ -1,5 +1,8 @@
 # jsz
 .vscode
+*.npy
+*.ipynb
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

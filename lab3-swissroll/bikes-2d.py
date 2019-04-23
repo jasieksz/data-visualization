@@ -90,3 +90,11 @@ sns.scatterplot(x='Start station number',
     hue='Member type',
     data=df.head(10000),
     alpha=0.8)
+
+
+
+#%%
+tum = pd.read_csv('tumor_10000.data', sep='\s+', header=None)
+
+#%%
+tum.describe()
