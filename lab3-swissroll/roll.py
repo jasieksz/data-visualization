@@ -112,3 +112,22 @@ for mapp in get_model_mapping(maps):
         ax.set_title(str(k) + mtime)
         ax.xaxis.set_major_formatter(NullFormatter())
         ax.yaxis.set_major_formatter(NullFormatter())
+
+#%%
+for (k,v) in (m for m in maps):
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(1, 1))
+    Y, color, mtime = v
+    ax.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
+    title = str(k) + mtime
+    # ax.set_title(title)
+    fig.savefig('resources/images/' + title + '.png')
+    plt.close(fig)
+
+#%%
+def paths():
+    base = 'resources/images/'
+    for (k,v) in (m for m in maps):
+        Y, color, mtime = v
+        title = str(k) + mtime
+        yield base + title + '.png'
+
