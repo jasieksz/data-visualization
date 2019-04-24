@@ -8,14 +8,10 @@ import re
 from matplotlib.ticker import NullFormatter
 from sklearn import datasets, manifold
 import json
+import math
 sns.set(style="darkgrid")
 
-#%%
-path = 'resources/201806-capitalbikeshare-tripdata.csv'
-df = pd.read_csv(path)
-df.head()
-
-#%%
+#%% Extract station_id, lat, lon
 stations = None
 with open('resources/station_information.json', 'r') as f:
     stations = json.load(f)
@@ -28,9 +24,18 @@ stations = stations.drop(['eightd_has_key_dispenser',\
     'external_id',\
     'rental_url'], axis=1)
 
-stations.describe()
+id_coord = stations.filter(['short_name','lat','lon'], axis=1)
 
-#%%
+def s_gen():
+    for i, row in id_coord.iterrows():
+        yield row['short_name'], (row['lat'], row['lon'])
+
+stats = {
+    k: v
+    for (k, v) in s_gen()
+}
+
+#%% Preprocess bike data
 def haversine(coord1, coord2):
     R = 6372800  # Earth radius in meters
     lat1, lon1 = coord1
@@ -45,56 +50,45 @@ def haversine(coord1, coord2):
     
     return 2*R*math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
+path = 'resources/201806-capitalbikeshare-tripdata.csv'
+df = pd.read_csv(path)
+
+df['Distance'] = df.get(['Start station number', 'End station number']) \
+    .apply(lambda r: haversine(stats.get(str(r[0]), (0,0)), \
+                             stats.get(str(r[1]), (0,0))), axis=1)
+
+df['Speed'] = df['Distance'] / df['Duration']
+df = df[df.Speed < 20] # filter anomallies 
+df = df.drop(columns=['Start date', 'End date', 'Start station', 'End station', 'Start station number', 'End station number', 'Bike number'])
+df.head()
 
 #%%
-id_coord = stations.filter(['short_name','lat','lon'], axis=1)
-id_cord = id_coord.to_dict(orient='records')
+weigthed_score = lambda r: r[2]*0.6 + r[0]*0.2 + r[1]*0.2
+weigthed_dist = lambda x,y: (weigthed_score(x) - weigthed_score(y))**2
+
+model = manifold.TSNE(2, \
+    init='pca', \
+    random_state=0, \
+    n_iter=2000, \
+    perplexity=40, \
+    learning_rate=500,
+    metric=weigthed_dist)
 
 #%%
-
-def s_gen():
-    for i, row in id_coord.iterrows():
-        yield row['short_name'], (row['lat'], row['lon'])
-
-stats = {
-    k: v
-    for (k, v) in s_gen()
-}
+n_rows = 1000
+Z = model.fit_transform( \
+    df.drop(columns=['Member type']).head(n_rows))
+Z = np.hstack((Z, \
+    df.head(n_rows)['Member type'].as_matrix().reshape(n_rows,1)))
 
 #%%
-stats
+sns.scatterplot(Z[:,0], Z[:,1], hue=Z[:,2])
 
 #%%
-def map_type(member):
-    if member == 'Member': 
-        return 10
-    return 0
-
-# df['StationDelta'] = df['End station number'] - df['Start station number']
-# # df['Member type'] = df['Member type'].transform(lambda t: map_type(t))
-# # df['Bike number'] = df['Bike number'].transform(lambda n: re.sub(r'[^0-9]', '', n))
-# # df = df.drop(columns=['Start date', 'End date', 'Start station', 'End station'])
-# df.head()
-
-
-#%%
-model = manifold.LocallyLinearEmbedding(10, 3, n_jobs=-1)
-Z = model.fit_transform(df.head(1000))
-Z = np.hstack((Z, df.head(1000)['Member type'].as_matrix().reshape(1000,1)))
-sns.scatterplot(Z[:,1], Z[:,0], size=Z[:,2], hue=Z[:,3], legend=None)
-
-
-#%%
-sns.scatterplot(x='Start station number',
-    y='End station number',
+sns.scatterplot(y='Duration', 
+    x='Distance',
     hue='Member type',
-    data=df.head(10000),
+    size='Speed',
+    data=df.head(50000),
     alpha=0.8)
 
-
-
-#%%
-tum = pd.read_csv('tumor_10000.data', sep='\s+', header=None)
-
-#%%
-tum.describe()
