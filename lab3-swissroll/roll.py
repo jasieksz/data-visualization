@@ -122,12 +122,3 @@ for (k,v) in (m for m in maps):
     # ax.set_title(title)
     fig.savefig('resources/images/' + title + '.png')
     plt.close(fig)
-
-#%%
-def paths():
-    base = 'resources/images/'
-    for (k,v) in (m for m in maps):
-        Y, color, mtime = v
-        title = str(k) + mtime
-        yield base + title + '.png'
-

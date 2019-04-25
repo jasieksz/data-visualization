@@ -59,36 +59,39 @@ df['Distance'] = df.get(['Start station number', 'End station number']) \
 
 df['Speed'] = df['Distance'] / df['Duration']
 df = df[df.Speed < 20] # filter anomallies 
-df = df.drop(columns=['Start date', 'End date', 'Start station', 'End station', 'Start station number', 'End station number', 'Bike number'])
+df = df.drop(columns=['Start date', 'End date', 'Start station', 'End station', 'Bike number']) #, 'Start station number', 'End station number', 'Bike number'])
 df.head()
 
 #%%
-weigthed_score = lambda r: r[2]*0.6 + r[0]*0.2 + r[1]*0.2
+weigthed_score = lambda r: r[4]*0.5 + r[0]*0.15 + r[3]*0.15 + np.abs(r[1] - r[2])*0.2
 weigthed_dist = lambda x,y: (weigthed_score(x) - weigthed_score(y))**2
 
-model = manifold.TSNE(2, \
-    init='pca', \
-    random_state=0, \
-    n_iter=2000, \
-    perplexity=40, \
-    learning_rate=500,
-    metric=weigthed_dist)
+models = {
+    'tsne' : manifold.TSNE(2, init='pca', random_state=0, n_iter=2000, perplexity=40, learning_rate=500, metric=weigthed_dist),
+    'lle' : manifold.LocallyLinearEmbedding(n_neighbors=8, n_jobs=-1),
+    'isomap' : manifold.Isomap(n_neighbors=8, n_jobs=-1),
+}
+
 
 #%%
-n_rows = 1000
-Z = model.fit_transform( \
-    df.drop(columns=['Member type']).head(n_rows))
-Z = np.hstack((Z, \
-    df.head(n_rows)['Member type'].as_matrix().reshape(n_rows,1)))
+n_rows = 10000
+Z = models['isomap'].fit_transform(df.drop(columns=['Member type']).head(n_rows))
+Z = np.hstack((Z, df.head(n_rows)['Member type'].as_matrix().reshape(n_rows,1)))
+np.save('lab3-swissroll/iso_bikes.npy', Z)
 
 #%%
-sns.scatterplot(Z[:,0], Z[:,1], hue=Z[:,2])
+def show_mappings(Z):
+    sns.scatterplot(Z[:,0], Z[:,1], hue=Z[:,2])
+
+TSNE = np.load('lab3-swissroll/tsne_bikes.npy')
+LLE = np.load('lab3-swissroll/lle_bikes.npy')
+ISO = np.load('lab3-swissroll/iso_bikes.npy')
 
 #%%
-sns.scatterplot(y='Duration', 
-    x='Distance',
-    hue='Member type',
-    size='Speed',
-    data=df.head(50000),
-    alpha=0.8)
+show_mappings(TSNE) 
 
+#%%
+show_mappings(LLE)
+
+#%%
+show_mappings(ISO)
