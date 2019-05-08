@@ -29,12 +29,12 @@ def paths():
         yield base + title + '.png'
 
 images_org = (plt.imread(path) for path in paths())
-images = map(lambda x: x.reshape(5184,4), images_org)
+images = map(lambda x: x.reshape(46656,4), images_org)
 
 combined = []
 for img in images:
     combined.append(img)
-combined = np.array(combined).reshape(48, 5184*4)
+combined = np.array(combined).reshape(48, 46656*4)
 
 images_org = (plt.imread(path) for path in paths())
 image_dict = {
@@ -43,7 +43,7 @@ image_dict = {
 }
 
 #%%
-model = manifold.LocallyLinearEmbedding(n_jobs=-1)
+model = manifold.Isomap(n_neighbors=5, n_jobs=-1)
 Y = model.fit_transform(combined)
 
 #%%
@@ -54,9 +54,14 @@ Z = sorted(Z, key=lambda x: (x[0], x[1]))
 order = [int(z[2]) for z in Z]
 
 #%%
-fig, axes = plt.subplots(nrows=16, ncols=3, figsize=(3, 16))
+fig, axes = plt.subplots(nrows=16, ncols=3, figsize=(9, 16*3))
 fig.subplots_adjust(hspace=0.1, wspace=0.1)
 for (o, ax) in zip(order, axes.flatten()):
     ax.imshow(image_dict[o])
     ax.plot()
+fig.savefig('resources/images/inception.png')
 
+#%%
+plt = sns.scatterplot(Y[:,0], Y[:,1])
+fig = plt.get_figure()
+fig.savefig('resources/images/inception_2.png')

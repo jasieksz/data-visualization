@@ -12,6 +12,7 @@ import mpl_toolkits.mplot3d.axes3d as p3
 import numpy as np
 from matplotlib.ticker import NullFormatter
 from sklearn import datasets, manifold
+import seaborn as sns
 
 #%% Generators
 def make_spiral(n, big_r, alpha, start_r):
@@ -37,8 +38,8 @@ def make_roll(rn, rr, sn, sr, sam=1): # no. spirals, donugth R, no. points in sp
     return (roll[:,:3], roll[:,3])
 
 #%% Generate roll variants
-spiral_points = [100]#, 150, 450]
-interspaces = [1]
+spiral_points = [100, 150, 450]
+interspaces = [0.5, 1, 2]
 n_spirals = 15
 dounugth_r = 25
 spiral_r = 10
@@ -57,6 +58,7 @@ for i, (k, v) in enumerate(rolls.items()):
     ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=color, cmap=plt.cm.Spectral)
     ax.set_title(str(k))
 plt.show()
+fig.savefig('resources/images/rolls.png')
 
 #%% Generate models
 components = 2
@@ -90,8 +92,8 @@ def get_model_mapping(arr):
     for s in range(0, len(arr), 9):
         yield arr[s:s+9]
 
-maps = np.array(list(get_mapping(rolls)))
-np.save('maps_tsne_i.npy', maps)
+# maps = np.array(list(get_mapping(rolls)))
+# np.save('maps_tsne_i.npy', maps)
 
 #%% Load saved mappings
 lle = np.load('lab3-swissroll/maps_lle.npy')
@@ -102,7 +104,19 @@ maps = np.concatenate((lle, iso, tsne, mds))
 
 
 #%% Show mappings
-for mapp in get_model_mapping(maps):
+def get_model_mapping(arr):
+    for s in range(0, len(arr), 9):
+        yield arr[s:s+9]
+
+lle = np.load('lab3-swissroll/maps_lle.npy')
+iso = np.load('lab3-swissroll/maps_iso.npy')
+mds = np.load('lab3-swissroll/maps_mds.npy')
+tsne = np.load('lab3-swissroll/maps_tsne.npy')
+maps = np.concatenate((lle, iso, tsne, mds))
+
+#%%
+plt.style.use('dark_background')
+for i,mapp in enumerate(get_model_mapping(maps)):
     fig, axes = plt.subplots(nrows=mapp.shape[0]//3, ncols=3, figsize=(15,mapp.shape[0]//3*5))
     fig.subplots_adjust(hspace=0.1, wspace=0.05)
     for ax, mapp in zip(axes.flatten(), mapp):
@@ -110,15 +124,20 @@ for mapp in get_model_mapping(maps):
         Y, color, mtime = v
         ax.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
         ax.set_title(str(k) + mtime)
+        ax.grid(False)
         ax.xaxis.set_major_formatter(NullFormatter())
         ax.yaxis.set_major_formatter(NullFormatter())
+    fig.savefig('resources/images/roll_' + str(i) + '.png')
+    plt.close(fig)
+
 
 #%%
 for (k,v) in (m for m in maps):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(1, 1))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(3, 3))
     Y, color, mtime = v
     ax.scatter(Y[:, 0], Y[:, 1], s=2, c=color, cmap=plt.cm.Spectral)
     title = str(k) + mtime
     # ax.set_title(title)
+    plt.axis('off')
     fig.savefig('resources/images/' + title + '.png')
     plt.close(fig)

@@ -4,6 +4,7 @@
 *.ipynb
 *.json
 resources/images/
+*.gexf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
