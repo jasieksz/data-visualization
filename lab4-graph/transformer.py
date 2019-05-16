@@ -80,4 +80,12 @@ nx.draw(G, pos=nx.spring_layout(G), alpha=0.6, node_size=50)
 nx.write_gexf(G, "resources/bikes_100.gexf")
 
 #%% [markdown]
-# https://github.com/gephi/gephi/wiki/Fruchterman-Reingold
+### nx.spring_layout() --> Fruchterman Reingold Algorithm
+#---
+#### 1) Forces between nodes:
+# * Attractive: spring force
+# * Repulsive: electrical force
+#### 2) Move nodes to minimze energy of the system
+# * Iterations controlled by 'temp' (sim-annel)
+#---
+####  https://github.com/gephi/gephi/wiki/Fruchterman-Reingold
