@@ -5,6 +5,7 @@
 *.json
 resources/images/
 *.gexf
+*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
